@@ -1,4 +1,6 @@
 BotApi
 ======
 
-BotApi for autoit
+BotApi for autoit!
+
+@home: http://l-i-v-e.ru/

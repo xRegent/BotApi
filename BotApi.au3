@@ -1,144 +1,170 @@
 ;;;
-;;; BotApi - API для создания графических роботов на языке autoit
+;;; BotApi - API РґР»СЏ СЃРѕР·РґР°РЅРёСЏ РіСЂР°С„РёС‡РµСЃРєРёС… СЂРѕР±РѕС‚РѕРІ РЅР° СЏР·С‹РєРµ autoit
 ;;;
-;;; @home: http://l-i-v-e.ru/
-;;; @autor: Aleks Regent
-;;; @version: 0.1
+;;; @home:    http://l-i-v-e.ru/
+;;; @autor:   Aleks Regent
+	$version = 0.2
 ;;;
 
 ;;;
 ;;; CPS - COORDINATES with PixelSum
-;;;     - формат массива из 3-х элементов, первые два в котором являются координатами X и Y
-;;;       в виде прогамных координат(старт координат от верхней левой точки программы)
-;;;       Третий элемент массива - контрольная сумма пикселей площадью 5*3 с центром в координатах X и Y
+;;;     - С„РѕСЂРјР°С‚ РјР°СЃСЃРёРІР° РёР· 3-С… СЌР»РµРјРµРЅС‚РѕРІ,
+;;;       РџРµСЂРІС‹Рµ РґРІР° СЌР»РµРјРµРЅС‚Р° - РєРѕРѕСЂРґРёРЅР°С‚С‹ X Рё Y РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ СЂР°Р±РѕС‡РµР№ РѕР±Р»Р°СЃС‚Рё РѕРєРЅР°
+;;;       РўСЂРµС‚РёР№ СЌР»РµРјРµРЅС‚ РјР°СЃСЃРёРІР° - РєРѕРЅС‚СЂРѕР»СЊРЅР°СЏ СЃСѓРјРјР° РїРёРєСЃРµР»РµР№ РїР»РѕС‰Р°РґСЊСЋ 9*3 СЃ С†РµРЅС‚СЂРѕРј РІ РєРѕРѕСЂРґРёРЅР°С‚Р°С… X Рё Y
 ;;;
 #include <MsgBoxConstants.au3>
+#include <Date.au3>
+#include <GUIConstantsEx.au3>
+#include <WindowsConstants.au3>
+#include <ButtonConstants.au3>
+#include <EditConstants.au3>
+Opt( "CaretCoordMode", 2 )
+Opt( "MouseCoordMode", 2 )
+Opt( "PixelCoordMode", 2 )
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; VARS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-global $Window, $WindowPos
-$WindowName = "[ACTIVE]"                         ; Имя окна
-;
-$IsMove = 1                                      ; Перемещать окно и изменять его размеры при старте?
-$MoveWidth = 1600                                ; Новые размеры и координаты окна [ 1280 x 720, 1366 x 768, 1536 x 864, 1600 x 900, 1920 x 1080 ]
-$MoveHeight = 900                                ; -||-
-$MoveX = @DesktopWidth / 2 - $MoveWidth / 2      ; -||-
-$MoveY = @DesktopHeight / 2 - $MoveHeight / 2    ; -||-
-;
-$MouseSpeed = 0                                  ; Скорость движения мыши при клике (0-10)
-Dim $MouseDefaultPos[2] = [ 10, 10 ]             ; Позиция мыши по умолчанию
-$MouseSpeedToDefault = 0                         ; Скорость движения мыши при клике (0-10)
-$SleepBeforeClick = 10                           ; Ждать до клика MS
-$SleepAfterClick = 10                            ; Ждать после клика MS
-;
-$isCircle = 0                               ; Работа бесконечного цикла
-;
-$BtnKill = "{ESC}"                          ; Кнопка выключения приложения
-$BtnStartCircle = "{F1}"                    ; Запустить бесконечный цикл
-$BtnStopCircle = "{F2}"                     ; Остановить бесконечный цикл
-$BtnGetCPS = "{F5}"                         ; Получить координаты курсора в приложении и контрольную сумму пикселей в этих координатах(CPS)
-;
-Dim $ArrayPixClick[1][3]   = [[0,0,0]]      ; Массив только для кликов по найденым пикселям - приоритет у первого найденого
-Dim $ArrayLogic[1][3]      = [[0,0,0]]      ; Массив для логики
-;
-$SleepBeforeStart = 3000                    ; Задержка перед стартом движка
-$SleepBeforeEnd   = 10000                   ; Задержка до завершения прогаммы
-$SleepInCircle    = 500                     ; Задержка в цикле
+Global $_w, $_wPos, $_gui, $_guiPos, $_isLogicCircle = 0, $_counter = 0, $_X = 0, $_Y = 0
+$_windowName = "[ACTIVE]"                        ; РРјСЏ РѕРєРЅР°. РќР°РїСЂРёРјРµСЂ "ProgramTopTitle" РёР»Рё "[CLASS:ProgClassName]"
+$_windowPath = ""                                ; РџСѓС‚СЊ РґРѕ РїСЂРёР»РѕР¶РµРЅРёСЏ, РєРѕС‚РѕСЂРѕРµ РЅСѓР¶РЅРѕ Р·Р°РїСѓСЃС‚РёС‚СЊ РІ СЃР»СѓС‡Р°Рµ, РµСЃР»Рё РѕРЅРѕ РЅРµ Р·Р°РїСѓС‰РµРЅРѕ
+$_botName = 'BotApi ' & $version
+; Moves
+$_move                     = 1                   ; РџРµСЂРµРјРµС‰Р°С‚СЊ РѕРєРЅРѕ Рё РёР·РјРµРЅСЏС‚СЊ РµРіРѕ СЂР°Р·РјРµСЂС‹ РїСЂРё СЃС‚Р°СЂС‚Рµ?
+Dim $_moveSize[ 2 ]        = [ 1600, 900 ]       ; РќРѕРІС‹Рµ СЂР°Р·РјРµСЂС‹ РѕРєРЅР°, РЅР°РїСЂРёРјРµСЂ 16*9: 1280 x 720, 1366 x 768, 1536 x 864, 1600 x 900, 1920 x 1080
+Dim $_movePos[ 2 ]         = [ _                 ; РќРѕРІР°СЏ РїРѕР·РёС†РёСЏ РѕРєРЅР°(X,Y)
+	@DesktopWidth  / 2 - $_moveSize[ 0 ] / 2, _  ; X
+	0  _                                         ; Y
+]
+; MOUSE
+Dim $_mouseDefaultPos[ 2 ] = [ 10, 10 ]          ; РџРѕР·РёС†РёСЏ РјС‹С€Рё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РѕРєРЅР° РїСЂРѕРіСЂР°РјРјС‹
+$_mouseSpeed               = 0                   ; РЎРєРѕСЂРѕСЃС‚СЊ РґРІРёР¶РµРЅРёСЏ РјС‹С€Рё РїСЂРё РєР»РёРєРµ (0-10)
+$_mouseSpeedToDefaultPos   = 0                   ; РЎРєРѕСЂРѕСЃС‚СЊ РґРІРёР¶РµРЅРёСЏ РјС‹С€Рё РЅР° РїРѕР·РёС†РёСЋ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+$_mouseClicksAmount        = 5                   ; РљРѕР»РёС‡РµСЃС‚РІРѕ РєР»РёРєРѕРІ РїСЂРё РѕРґРЅРѕРј РєР»РёРєРµ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+$_sleepBeforeClick         = 10                  ; Р–РґР°С‚СЊ РґРѕ РєР»РёРєР° MS
+$_sleepAfterClick          = 10                  ; Р–РґР°С‚СЊ РїРѕСЃР»Рµ РєР»РёРєР° MS
+; Buttons
+$_btnExit                  = "{ESC}"             ; РљРЅРѕРїРєР° РІС‹РєР»СЋС‡РµРЅРёСЏ РїСЂРёР»РѕР¶РµРЅРёСЏ
+$_btnStart                 = "{F1}"              ; Р—Р°РїСѓСЃРє РїСЂРёР»РѕР¶РµРЅРёСЏ
+$_btnStop                  = "{F2}"              ; РћСЃС‚Р°РЅРѕРІРєР° РїСЂРёР»РѕР¶РµРЅРёСЏ
+$_btnGetPos                = "{F3}"              ; РџРѕР»СѓС‡РёС‚СЊ РєРѕРѕСЂРґРёРЅР°С‚С‹ РєСѓСЂСЃРѕСЂР°
+$_btnGetCPS                = "{F4}"              ; РџРѕР»СѓС‡РёС‚СЊ CPS
+; Р—Р°РґРµСЂР¶РєРё
+$_sleepBeforeStart         = 500                 ; Р—Р°РґРµСЂР¶РєР° РїРµСЂРµРґ СЃС‚Р°СЂС‚РѕРј РґРІРёР¶РєР°
+$_sleepInCircle            = 500                 ; Р—Р°РґРµСЂР¶РєР° РІ С†РёРєР»Рµ
+; GUI
+$_is_GUI                   = 1
+$_is_GUI_btn_close         = 1
+$_is_GUI_btn_getPos        = 1
+$_is_GUI_btn_getCPS        = 1
+$_is_GUI_icon              = 1
+$_is_GUI_console           = 1
+$_gui_icon                 = @ScriptDir & "\assets\logo64x64.gif"
+; COS DATA
+Dim $CPS_STACK[ 0 ]        = []                  ; РҐСЂР°РЅРёР»РёС‰Рµ CPS-РјР°СЃСЃРёРІРѕРІ
+Dim $_General[ 1 ][ 3 ]    = [[0,0,0]]           ; Р“Р»Р°РІРЅС‹Р№ CPS-РјР°СЃСЃРёРІ Р»РѕРіРёРєРё
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; FUNCTIONS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-; Завершить приложение
-HotKeySet( $BtnKill, "Kill" )
-Func Kill()
+; Р—Р°РІРµСЂС€РёС‚СЊ РїСЂРёР»РѕР¶РµРЅРёРµ
+HotKeySet( $_btnExit, "_Exit" )
+Func _Exit()
 	Exit
 EndFunc
 
-; Запустить бесконечный цикл обработки данных
-HotKeySet( $BtnStartCircle, "StartCircle" )
-Func StartCircle()
-	if $isCircle = 0 then
-		$isCircle = 1
-		Circle()
+; Р—Р°РїСѓСЃС‚РёС‚СЊ Р±РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР» РѕР±СЂР°Р±РѕС‚РєРё РґР°РЅРЅС‹С…
+HotKeySet( $_btnStart, "_Start" )
+Func _Start()
+	$_isLogicCircle = 1
+	_log( 'Start' )
+EndFunc
+; РћСЃС‚Р°РЅРѕРІРёС‚СЊ Р±РµСЃРєРѕРЅРµС‡РЅС‹Р№ С†РёРєР»
+HotKeySet( $_btnStop, "_Stop" )
+Func _Stop()
+	_log( 'Stop' )
+	$_isLogicCircle = 0
+EndFunc
+
+; РџРѕР»СѓС‡РёС‚СЊ С‚РµРєСѓС‰СѓСЋ РїРѕР·РёС†РёСЋ РєСѓСЂСЃРѕСЂР°
+HotKeySet( $_btnGetPos, "_logPos" )
+func getPos()
+	WinActivate( $_w )
+	return MouseGetPos()
+endfunc
+func _logPos()
+	local $pos = getPos()
+	return _log( '[ ' & $pos[ 0 ] & ', ' & $pos[ 1 ] & ' ]' )
+endfunc
+
+; РџРѕР»СѓС‡РёС‚СЊ РјР°СЃСЃРёРІ С„РѕСЂРјР°С‚Р° CPS
+HotKeySet( $_btnGetCPS, "_logCPS" )
+Func getCPS( $x = 0.1, $y = 0.1 )
+
+	if $x = 0.1 then
+		dim $pos = getPos()
+		$x = $pos[ 0 ]
+		$y = $pos[ 1 ]
 	endif
-EndFunc
 
-; Остановить бесконечный цикл
-HotKeySet( $BtnStopCircle, "StopCircle" )
-Func StopCircle()
-	$isCircle = 0
-	sleep( $SleepBeforeEnd )
-	Exit
-EndFunc
-
-; Получить координаты курсора в приложении и контрольную сумму пикселей в этих координатах
-; Т. е. получить массив в формате CPS
-HotKeySet( $BtnGetCPS, "GetCPS" )
-Func GetCPS()
-	local $m = MouseGetPos()
-	log_( 'Real coords: ' & $m[0] & ' ' & $m[1] )
-	local $c[4] = [ $m[0] - 2, $m[1] - 1, $m[0] + 2, $m[1] + 1 ]
-	GoDefaultMouse()
+	GoDefaultPos()
 	sleep( 100 )
-	$m = toProgramCoords( $m )
-	log_( 'Program coords: ' & $m[0] & ' ' & $m[1] )
-	local $n = PixelChecksum( $c[0], $c[1], $c[2], $c[3] )
-	$mess = '[' & $m[0] & ',' & $m[1] & ',' & $n & ']'
-	log_( $mess, 1 )
-	MouseMove( $c[ 0 ], $c[ 1 ], 10 )
-	sleep( 400 )
-	MouseMove( $c[ 2 ], $c[ 3 ], 10 )
-	sleep( 400 )
-	WinActivate( "[CLASS:SciTEWindow]" )
-	Kill()
+
+	local $square[ 4 ] = [ $x - 4, $y - 1, $x + 4, $y + 1 ]
+	local $sum = PixelChecksum( $square[ 0 ], $square[ 1 ], $square[ 2 ], $square[ 3 ] )
+
+	MouseMove( $square[ 0 ], $square[ 1 ], 10 )
+	sleep( 300 )
+	MouseMove( $square[ 2 ], $square[ 3 ], 10 )
+	sleep( 10 )
+
+	return '[' & $x & ',' & $y & ',' & $sum & ']'
+EndFunc
+Func _logCPS()
+	return _log( getCPS(), 1 );
 EndFunc
 
-; Поставить мышь в позицию по умолчанию
-func GoDefaultMouse()
-	local $a = toRealCoords( $MouseDefaultPos )
-	MouseMove( $a[ 0 ], $a[ 1 ], $MouseSpeedToDefault )
+; РџРѕСЃС‚Р°РІРёС‚СЊ РјС‹С€СЊ РІ РїРѕР·РёС†РёСЋ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
+func GoDefaultPos( $speed = -1 )
+	if $speed = -1 then $speed = $_mouseSpeedToDefaultPos
+	return MouseMove( $_mouseDefaultPos[ 0 ], $_mouseDefaultPos[ 1 ], $speed )
 endfunc
 
-; Системный диалог
+; РЎРёСЃС‚РµРјРЅС‹Р№ РґРёР°Р»РѕРі
 func alert( $mess, $type = 0 )
-	MsgBox( $type,'', $mess )
+	MsgBox( $type, '', $mess )
 endfunc
 
-; Копировать в буфер обмена
+; РљРѕРїРёСЂРѕРІР°С‚СЊ РІ Р±СѓС„РµСЂ РѕР±РјРµРЅР°
 func copy( $mess )
 	Clipput( $mess )
 endfunc
 
-; Отправить сообщение в консоль
-func log_( $mess, $isCopy = 0 )
+; РћС‚РїСЂР°РІРёС‚СЊ СЃРѕРѕР±С‰РµРЅРёРµ РІ РєРѕРЅСЃРѕР»СЊ
+func _log( $mess, $isCopy = 0 )
 	if $isCopy then copy( $mess )
-	ConsoleWrite( '********** |- ' & $mess & @LF )
+	ConsoleWrite( '* ' & _NowTime() & ' |- ' & $mess & @LF )
+
+	if IsDeclared( '_gui_console' ) then
+		GUICtrlSetData( $_gui_console, @CRLF & $mess, 1 )
+	endif
+	if IsDeclared( '_gui_console_time' ) then
+		GUICtrlSetData( $_gui_console_time, @CRLF & _NowTime(), 1 )
+	endif
+
 endfunc
 
-; Конвертирование в координаты относительно окна программы
-Func toProgramCoords( $arr )
-	local $a = $arr;
-	$a[0] = $arr[0] - $WindowPos[0]
-	$a[1] = $arr[1] - $WindowPos[1]
-	Return $a;
-EndFunc
-; Конвертирование в координаты из относительных к программе в относительные к дисплею
-Func toRealCoords( $arr )
-	local $a = $arr;
-	$a[0] = $arr[0] + $WindowPos[0]
-	$a[1] = $arr[1] + $WindowPos[1]
-	Return $a;
-EndFunc
-
-; Проверка на наличие CPS на дисплее
-func isCPSinDisplay( $CPSmultiArray, $CPS_index )
-	local $arr = GetArray( $CPSmultiArray, $CPS_index )
-	$arr = toRealCoords( $arr )
-	local $pix = PixelChecksum( $arr[0] - 2, $arr[1] - 1, $arr[0] + 2, $arr[1] + 1 )
-	return $pix = $arr[ 2 ]
+; РџСЂРѕРІРµСЂРєР° РЅР° РЅР°Р»РёС‡РёРµ CPS РЅР° РґРёСЃРїР»РµРµ
+func isCPS( $CPSmultiArray, $CPS_index )
+	local $pix = PixelChecksum( _
+		$CPSmultiArray[ $CPS_index ][0] - 4, _
+		$CPSmultiArray[ $CPS_index ][1] - 1, _
+		$CPSmultiArray[ $CPS_index ][0] + 4, _
+		$CPSmultiArray[ $CPS_index ][1] + 1  _
+	)
+	return $pix = $CPSmultiArray[ $CPS_index ][ 2 ]
 endfunc
 
-; Получить массив с индексом $index из многомерного массива $multiArray
+; РџРѕР»СѓС‡РёС‚СЊ РјР°СЃСЃРёРІ СЃ РёРЅРґРµРєСЃРѕРј $index РёР· РјРЅРѕРіРѕРјРµСЂРЅРѕРіРѕ РјР°СЃСЃРёРІР° $multiArray
 func GetArray( $multiArray, $index )
 	local $len = UBound( $multiArray, 2 )
 	local $newArr[ $len ]
@@ -148,19 +174,32 @@ func GetArray( $multiArray, $index )
 	return $newArr
 endfunc
 
-; Клик по CPS на дисплее
+; РљР»РёРє РїРѕ CPS РЅР° РґРёСЃРїР»РµРµ
 func clickCPS( $CPSmultiArray, $CPS_index )
-	local $arr = GetArray( $CPSmultiArray, $CPS_index )
-	$arr = toRealCoords( $arr )
-	return click( $arr[ 0 ], $arr[ 1 ] )
+	return click( $CPSmultiArray[ $CPS_index ][ 0 ], $CPSmultiArray[ $CPS_index ][ 1 ] )
 endfunc
 
-; Клик по реальным X и Y на дисплее
-func click( $x, $y )
-	sleep( $SleepBeforeClick )
-	MouseClick( '', $x, $y, 5, $MouseSpeed )
-	GoDefaultMouse()
-	sleep( $SleepAfterClick )
+; РљР»РёРє РїРѕ СЂРµР°Р»СЊРЅС‹Рј X Рё Y РЅР° РґРёСЃРїР»РµРµ
+func click( $x = 0.1, $y = 0.1 )
+WinActivate( $_w )
+	if $x = 0.1 then
+		$x = $_X
+		$y = $_Y
+	endif
+	sleep( $_sleepBeforeClick )
+	MouseClick( '', $x, $y, $_mouseClicksAmount, $_mouseSpeed )
+	GoDefaultPos()
+	sleep( $_sleepAfterClick )
+	return 1
+endfunc
+
+
+
+func _minuts( $min )
+	return 1000 * 60 * $min 
+endfunc
+func _spread( $n, $range )
+	return $n + Random( - $range, $range, 1 )
 endfunc
 
 
@@ -170,52 +209,170 @@ endfunc
 
 
 
-
-; Движок!
+; Р”РІРёР¶РѕРє!
 func INIT()
-	sleep( $SleepBeforeStart )
+	sleep( $_sleepBeforeStart )
 
-	$Window = WinWait( $WindowName )
-	WinActivate( $Window )
-	WinSetState( $Window, '', @SW_MAXIMIZE )
+	$_w = WinWait( $_windowName )
+	WinActivate( $_w )
+	WinSetState( $_w, '', @SW_MAXIMIZE )
 
-	if $IsMove then WinMove( $Window, "", $MoveX, $MoveY, $MoveWidth, $MoveHeight )
-	$WindowPos = WinGetPos( $Window )
+	if $_move then WinMove( $_w, "", $_movePos[ 0 ], $_movePos[ 1 ], $_moveSize[ 0 ], $_moveSize[ 1 ] )
+	$_wPos = WinGetPos( $_w )
 
-	log_( 'Window name: ' & WinGetTitle( $Window ) )
-	log_( 'Window pos : ' & $WindowPos[0] & ' ' & $WindowPos[1] )
-	log_( 'Window size: ' & $WindowPos[2] & '*' & $WindowPos[3] )
+	if $_is_GUI then _GUI()
 
-	sleep( $SleepBeforeEnd )
+	_log( 'Window name: ' & WinGetTitle( $_w ) )
+	;_log( 'Window pos : ' & $_wPos[ 0 ] & ' ' & $_wPos[ 1 ] )
+	;_log( 'Window size: ' & $_wPos[ 2 ] & '*' & $_wPos[ 3 ] )
+
+	_circle()
+
+endfunc
+;
+;
+;
+
+func _GUI()
+	
+	Opt( "GUICoordMode", 1 )
+	Opt( 'GUIOnEventMode', 1 )
+	GUISetOnEvent( $GUI_EVENT_CLOSE, '_Exit' )
+	
+	$_gui = GUICreate( _
+		$_botName, _
+		$_wPos[ 2 ] - 10, _
+		64, _
+		$_wPos[ 0 ] + 5 , _
+		$_wPos[ 3 ], _
+		BitOr( $WS_MINIMIZEBOX, $WS_POPUP ), _
+		0 _
+	)
+	GUISetState( @SW_SHOW )
+
+	$_guiPos = WinGetPos( $_gui )
+
+	if $_is_GUI_icon then
+		$_gui_icon = GUICtrlCreatePic( $_gui_icon, 0, 32, 28, 28, -1, $WS_EX_CLIENTEDGE )
+	endif
+
+	if $_is_GUI_btn_getCPS then
+		global $_gui_getCPS = GUICtrlCreateButton( _
+			'GET CPS', _
+			$_guiPos[ 2 ] - 452, _
+			0, _
+			32, _
+			32, _
+			BitOr( $BS_ICON, $BS_DEFPUSHBUTTON, $BS_FLAT ), _
+			$WS_EX_CLIENTEDGE _
+		)
+		GUICtrlSetImage( -1, @SystemDir & '\shell32.dll', 22, 0 )
+		GUICtrlSetOnEvent( $_gui_getCPS, '_gui_getCPS_fn' )
+	endif
+
+	if $_is_GUI_btn_getPos then
+		global $_gui_getPos = GUICtrlCreateButton( _
+			'GET Position', _
+			$_guiPos[ 2 ] - 452, _
+			32, _
+			32, _
+			32, _
+			BitOr( $BS_ICON, $BS_DEFPUSHBUTTON, $BS_FLAT ), _
+			$WS_EX_CLIENTEDGE _
+		)
+		GUICtrlSetImage( -1, @SystemDir & '\shell32.dll', 323, 0 )
+		GUICtrlSetOnEvent( $_gui_getPos, '_gui_getPos_fn' )
+	endif
+
+	if $_is_GUI_btn_close then
+		global $_gui_close = GUICtrlCreateButton( 'Close', 0, 0, 32, 32, BitOr( $BS_ICON, $BS_DEFPUSHBUTTON, $BS_FLAT ), $WS_EX_CLIENTEDGE )
+		GUICtrlSetImage( -1, @SystemDir & '\shell32.dll', 240, 0 )
+		GUICtrlSetOnEvent( $_gui_close, '_Exit' )
+	endif
+
+	if $_is_GUI_console then
+		global $_gui_console = GUICtrlCreateEdit( _
+			'--------------------------------------------- CONSOLE ---------------------------------------------', _
+			$_guiPos[ 2 ] - 420, _
+			0, _
+			350, _
+			64, _
+			BitOr( $ES_WANTRETURN, $WS_VSCROLL, $ES_AUTOVSCROLL, $ES_AUTOHSCROLL, $ES_READONLY, $ES_MULTILINE ) _
+		)
+
+		global $_gui_console_time = GUICtrlCreateEdit( _
+			'---TIME---', _
+			$_guiPos[ 2 ] - 68, _
+			0, _
+			66, _
+			64, _
+			BitOr( $ES_WANTRETURN, $WS_VSCROLL, $ES_AUTOVSCROLL, $ES_AUTOHSCROLL, $ES_READONLY, $ES_MULTILINE ) _
+		)
+	endif
+
+	WinActivate( $_w )
+
+
+endfunc
+; GUI Events Function
+func _gui_getCPS_fn()
+	sleep( 1500 )
+	return _logCPS()
 endfunc
 
-func Circle()
-	log_( 'Circle start!' )
-	while $isCircle
+func _gui_getPos_fn()
+	sleep( 1500 )
+	return _logPos()
+endfunc
+;
+;
+;
 
-		sleep( $SleepInCircle )
+func _circle()
+	while 1
 
-		; Logic Circle
-		for $i = 0 to UBound( $ArrayLogic ) - 1 step 1
-			if isCPSinDisplay( $ArrayLogic, $i ) then
-				if Logic( $i ) then exitloop
-			endif
-		next
+		sleep( $_sleepInCircle )
 
-		; Click Circle
-		for $i = 0 to UBound( $ArrayPixClick ) - 1 step 1
-			if isCPSinDisplay( $ArrayPixClick, $i ) then
-				if NOT LogicBeforeClick( $i ) then
-					clickCPS( $ArrayPixClick, $i )
-				else
-					exitloop
-				endif
-				if LogicAfterClick( $i ) then
-					exitloop
-				endif
-			endif
-		next
+		if $_isLogicCircle then
+
+			GoLogic( '_General' )
+			
+		endif
 
 	wend
 endfunc
+
+func GoLogic( $name )
+
+	local $a = eval( $name )
+	local $res = ''
+
+	for $i = 0 to UBound( $a ) - 1 step 1
+
+		if isCPS( $a, $i ) then
+			$_X = $a[ $i ][ 0 ]
+			$_Y = $a[ $i ][ 1 ]
+			_log( '$' & $name & '[' & $i & '] MATCH = ' & $res )
+			$res = Logic( $name, $i )
+
+			if $res = 1 then exitloop
+
+		endif
+
+	next
+endfunc
+
+
+
+
+
+
+
+
+
+
+
+
+;
+; INIT()
 ;
